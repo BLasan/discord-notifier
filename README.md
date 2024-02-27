@@ -56,5 +56,5 @@ We need to configure a mail account to send emails. This accont will be the send
 7. In a separate browser window or tab, visit OAuth 2.0 Playground(https://developers.google.com/oauthplayground). Click on the OAuth 2.0 Configuration icon in the top right corner and click on Use your own OAuth credentials and provide your OAuth Client ID and OAuth Client Secret.
 8. Select the required Gmail API scopes from the list of API's, and then click Authorize APIs. 
 9. When you receive your authorization code, click Exchange authorization code for tokens to obtain the refresh token and access token.
-10. Now you should have all the required tkens for the token.json file.
+10. Now you should have all the required tokens for the token.json file.
 11. Also enable the Gmail API in your cloud console - https://console.cloud.google.com/apis/api/gmail.googleapis.com
