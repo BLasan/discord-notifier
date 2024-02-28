@@ -125,7 +125,8 @@ const   initWebsocket = () => {
                 console.log("Discord gateway conenction resumed!");
                 break;
             case "MESSAGE_CREATE":
-                funcs.handleMessageCreateEvent(d);      
+                funcs.handleMessageCreateEvent(d);    
+                //funcs.sendAlerts();
                 break;
             case "THREAD_DELETE":
                 funcs.handleMessageDeleteEvent(d);

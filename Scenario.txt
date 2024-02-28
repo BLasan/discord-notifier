@@ -1,0 +1,7 @@
+Following operations will be performed from the script.
+
+1. Send notifications to the google space if a thread is initiated.
+2. It keeps the message in a map and periodically checks whether there's any reply for the thread. If so, it removes the
+   corresponding thread from the map in order to avoid sending further notifications on that.
+3. When initiating a thread, it comes with a message. In message object, we have property "position". If it's 0, then we won't
+   perform delete operation as it's sent by a member.

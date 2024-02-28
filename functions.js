@@ -15,24 +15,25 @@ const debug = ENV.DEBUG ? ENV.DEBUG : false;
 const noReplyMap = new Map();
 
 async function handleMessageCreateEvent(message){
-    const { author, id, channel_id, timestamp } = message;
-    if (debug) {
-        console.debug("Received message: " + id + " from user: " + author.username);
-    }
+    const { author, id, channel_id, timestamp, message_reference, position } = message;
+    console.debug(message); 
     
-    if (id == channel_id) {
+    if (message_reference && id == message_reference.channel_id) {
+        console.debug("Received message from channel: " + channel_id + " which is not a thread.")
         let {parent_id, guild_id} = await getChannelInfo(channel_id);
+        console.debug("Parent ID: " + parent_id + ", Guild ID: " + guild_id);
         if (debug) {
             console.debug("Channel: " + channel_id + " is a thread of parent channel: " 
             + parent_id + " in guild: " + guild_id);
         }
         // this check is required to filter the events from the channel of interest
-       if (parent_id == ENV.CHANNEL_ID) {
+       if (channel_id == ENV.CHANNEL_ID) {
             noReplyMap.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
-            guild_id: guild_id});
+            guild_id: guild_id, position: position, delay: 0});
         }
-        
-    } else {
+        sendChatAlert(noReplyMap.get(id), alertWebhook);
+        noReplyMap.set(id, noReplyMap.get(id));
+    } else if(position > 0) {
         noReplyMap.delete(channel_id);
     }
 }
@@ -67,6 +68,7 @@ function getChannelInfo(channel_id) {
             body += chunk;
         });
         res.on("end", () => {
+            console.debug("Received response: " + JSON.parse(body));
             resolve(JSON.parse(body));
         });
     })
@@ -74,7 +76,6 @@ function getChannelInfo(channel_id) {
         console.log("Error: " + err.message);
         reject(err)
     }));
-
 }
 
 function sendAlerts(){
@@ -86,6 +87,8 @@ function sendAlerts(){
     for (const [key, msg] of noReplyMap.entries()) {
         const timestamp = new Date(msg.timestamp);
         let delay = now.getTime() - timestamp.getTime();
+        console.debug("Message Level: "+ msg.level);
+        console.debug("Message Delay: "+ delay);
         if ((delay >= l2*60*1000) && msg.level == 2) {
             if (debug) {
                 console.debug("Sending escalation alert for message: " + msg.id);
@@ -99,7 +102,7 @@ function sendAlerts(){
                 console.debug("Sending Email alert for message: " + msg.id);
             }
             msg.delay = delay;
-            email.sendMail(msg);
+            sendChatAlert(msg, escalationWebhook);
             msg.level = 2;
             noReplyMap.set(key,msg);
         } else if ((delay >= l0*60*1000) && msg.level == 0) {
