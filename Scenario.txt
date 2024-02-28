@@ -5,3 +5,7 @@ Following operations will be performed from the script.
    corresponding thread from the map in order to avoid sending further notifications on that.
 3. When initiating a thread, it comes with a message. In message object, we have property "position". If it's 0, then we won't
    perform delete operation as it's sent by a member.
+
+
+Please follow the steps mentioned to obtain and configure discord bot with channel
+https://www.writebots.com/discord-bot-token/
