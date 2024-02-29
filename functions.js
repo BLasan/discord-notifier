@@ -31,7 +31,7 @@ async function handleMessageCreateEvent(message){
             noReplyMap.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
             guild_id: guild_id});
         }
-        
+        sendChatAlert(noReplyMap.get(id), alertWebhook);
     } else {
         noReplyMap.delete(channel_id);
     }
@@ -99,7 +99,7 @@ function sendAlerts(){
                 console.debug("Sending Email alert for message: " + msg.id);
             }
             msg.delay = delay;
-            email.sendMail(msg);
+            sendChatAlert(msg, alertWebhook);
             msg.level = 2;
             noReplyMap.set(key,msg);
         } else if ((delay >= l0*60*1000) && msg.level == 0) {
@@ -115,6 +115,9 @@ function sendAlerts(){
 }
 
 const getChatMessage = (msg) => {
+    if(msg.delay==undefined){
+        return 'New Discord message from user: ' + msg.author + ', has been received. '+'Link: ' + discordWebUrl + '/' + msg.guild_id + '/' + ENV.CHANNEL_ID + '/threads/' + msg.id;        
+    }
     return 'New Discord message from user: ' + msg.author + ', has not been answered for: ' + Math.floor(msg.delay/60/60/1000) + 
         ' hours.\n'+ 'Link: ' + discordWebUrl + '/' + msg.guild_id + '/' + ENV.CHANNEL_ID + '/threads/' + msg.id;
 }
