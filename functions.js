@@ -22,7 +22,7 @@ async function handleMessageCreateEvent(message){
         console.debug("Received message: " + id + " from user: " + author.username);
     }
     
-    let {parent_id, guild_id} = await getChannelInfo(channel_id);
+    let {parent_id, guild_id, name} = await getChannelInfo(channel_id);
 
     if (id == channel_id) {
         if (debug) {
@@ -32,13 +32,13 @@ async function handleMessageCreateEvent(message){
         // this check is required to filter the events from the channel of interest
         if (parent_id == ENV.CHANNEL_ID.APIM) {
             noReplyMapAPIM.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
-            guild_id: guild_id, channelType: 'APIM'});
+            guild_id: guild_id, channelType: 'APIM', title: name});
             sendChatAlert(noReplyMapAPIM.get(id), alertWebhook);
         }
 
         if(parent_id == ENV.CHANNEL_ID.APK){
             noReplyMapAPK.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
-                guild_id: guild_id, channelType: 'APK'});
+                guild_id: guild_id, channelType: 'APK', title: name});
             sendChatAlert(noReplyMapAPK.get(id), alertWebhook);  
         }
         //sendChatAlert(noReplyMapAPIM.get(id), alertWebhook);
@@ -179,17 +179,36 @@ function sendAlerts(){
 }
 
 const getChatMessage = (msg) => {
+    //console.debug(msg);
     let channelId = ENV.CHANNEL_ID.APIM;
-
+    let message;
     // If the message is from APK channel
     if(msg.channelType && msg.channelType==='APK'){
         channelId = ENV.CHANNEL_ID.APK;
     }
-    if(msg.delay==undefined){
-        return 'New ' + msg.channelType + ' Discord message from user: ' + msg.author + ', has been received. '+'Link: ' + discordWebUrl + '/' + msg.guild_id + '/' + channelId + '/threads/' + msg.id;        
+    let date = new Date(msg.timestamp);
+    let dateStr = date.getFullYear() + '-' + (date.getMonth()+1) + '-' + date.getDate();
+    let timeStr = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+    let msgTitle = msg.title;
+    if(msg.title && msg.title.length>500){
+       msgTitle = msg.title.substring(0,500) + '...'; 
     }
-    return 'New ' + msg.channelType + ' Discord message from user: ' + msg.author + ', has not been answered for: ' + Math.floor(msg.delay/60/60/1000) + 
-        ' hours.\n'+ 'Link: ' + discordWebUrl + '/' + msg.guild_id + '/' + channelId + '/threads/' + msg.id;
+    if(msg.delay==undefined){
+        message = msgTitle + '\n' + 'Created on ' + dateStr + ' at ' + timeStr + ' by ' +
+                  msg.author + '.\n' +
+                  'Channel : ' + msg.channelType + '\n' +
+                  discordWebUrl + '/' + msg.guild_id + '/' + channelId + '/threads/' + msg.id;
+        //return 'New ' + msg.channelType + ' Discord message from user: ' + msg.author + ', has been received. '+'Link: ' + discordWebUrl + '/' + msg.guild_id + '/' + channelId + '/threads/' + msg.id;        
+    } else {
+        message = msgTitle + '\n' +
+                  'Thread created by ' + msg.author +  
+                  ' has not been answered for: ' + Math.floor(msg.delay/60/60/1000) + ' hours.\n' +
+                  'Channel : ' + msg.channelType + '\n' +
+                  discordWebUrl + '/' + msg.guild_id + '/' + channelId + '/threads/' + msg.id;
+    }
+    return message;
+    //return 'New ' + msg.channelType + ' Discord message from user: ' + msg.author + ', has not been answered for: ' + Math.floor(msg.delay/60/60/1000) + 
+        //' hours.\n'+ 'Link: ' + discordWebUrl + '/' + msg.guild_id + '/' + channelId + '/threads/' + msg.id;
 }
 
 const sendChatAlert = (msg, webhookURL) => {
