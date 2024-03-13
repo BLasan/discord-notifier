@@ -187,8 +187,11 @@ const getChatMessage = (msg) => {
         channelId = ENV.CHANNEL_ID.APK;
     }
     let date = new Date(msg.timestamp);
+    //console.log(date);
     let dateStr = date.getFullYear() + '-' + (date.getMonth()+1) + '-' + date.getDate();
-    let timeStr = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+    let timeStr = new Date(msg.timestamp).toLocaleString("en-US", {timeZone: 'Asia/Kolkata'});
+    timeStr = timeStr.replace(" ","").split(',')[1];
+    //let timeStr = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
     let msgTitle = msg.title;
     if(msg.title && msg.title.length>500){
        msgTitle = msg.title.substring(0,500) + '...'; 
