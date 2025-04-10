@@ -7,13 +7,14 @@ const { Console } = require("console");
 let l0 = ENV.ALERT1_MINS;
 let l1 = ENV.ALERT2_MINS;
 let l2 = ENV.ALERT3_MINS;
-const alertWebhook = ENV.ALERT_CHAT_WEBHOOK;
-const escalationWebhook = ENV.ESCALATION_CHAT_WEBHOOK;
+let alertWebhook;
+let escalationWebhook;
 const discordWebUrl = 'https://discord.com/channels';
 const debug = ENV.DEBUG ? ENV.DEBUG : false;
 
 const noReplyMapAPIM = new Map();
 const noReplyMapAPK = new Map();
+const noReplyMapBijira = new Map();
 
 async function handleMessageCreateEvent(message){
     const { author, id, channel_id, timestamp } = message;
@@ -31,15 +32,25 @@ async function handleMessageCreateEvent(message){
         }
         // this check is required to filter the events from the channel of interest
         if (parent_id == ENV.CHANNEL_ID.APIM) {
+            alertWebhook = ENV.ALERT_CHAT_WEBHOOK.APIM;
             noReplyMapAPIM.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
             guild_id: guild_id, channelType: 'APIM', title: name});
             sendChatAlert(noReplyMapAPIM.get(id), alertWebhook);
         }
 
         if(parent_id == ENV.CHANNEL_ID.APK){
+            alertWebhook = ENV.ALERT_CHAT_WEBHOOK.APIM;
             noReplyMapAPK.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
                 guild_id: guild_id, channelType: 'APK', title: name});
             sendChatAlert(noReplyMapAPK.get(id), alertWebhook);  
+        }
+
+        if(parent_id == ENV.CHANNEL_ID.BIJIRA) {
+            alertWebhook = ENV.ALERT_CHAT_WEBHOOK.BIJIRA;
+            escalationWebhook =ENV.ESCALATION_CHAT_WEBHOOK.BIJIRA;
+            noReplyMapBijira.set(id, {timestamp: timestamp, author: author.username, level: 0, id: id, 
+                guild_id: guild_id, channelType: 'BIJIRA', title: name});
+            sendChatAlert(noReplyMapBijira.get(id), alertWebhook);
         }
         //sendChatAlert(noReplyMapAPIM.get(id), alertWebhook);
     } else {
@@ -53,6 +64,11 @@ async function handleMessageCreateEvent(message){
                 console.debug("Removing message: " + id + " from noReplyMapAPK");
             }
             noReplyMapAPK.delete(channel_id);
+        } else if(parent_id == ENV.CHANNEL_ID.BIJIRA) {
+            if (debug) {
+                console.debug("Removing message: " + id + " from noReplyMapBijira");
+            }
+            noReplyMapBijira.delete(channel_id);
         }
     }
 }
@@ -73,6 +89,11 @@ function handleMessageDeleteEvent(message){
             console.debug("Deleting message: " + id + " from APK Channel");
         }
         noReplyMapAPK.delete(id);
+    } else if(parent_id == ENV.CHANNEL_ID.BIJIRA) {
+        if (debug) {
+            console.debug("Deleting message: " + id + " from Bijira Channel");
+        }
+        noReplyMapBijira.delete(id);
     }
 }
 
@@ -115,6 +136,8 @@ function sendAlerts(){
     let now = new Date();
 
     // Iterate over APIM channel messages
+    escalationWebhook = ENV.ESCALATION_CHAT_WEBHOOK.APIM;
+    alertWebhook = ENV.ESCALATION_CHAT_WEBHOOK.APIM;
     for (const [key, msg] of noReplyMapAPIM.entries()) {
         const timestamp = new Date(msg.timestamp);
         let delay = now.getTime() - timestamp.getTime();
@@ -146,6 +169,8 @@ function sendAlerts(){
     }
 
     // Iterate over APK channel messages
+    escalationWebhook = ENV.ESCALATION_CHAT_WEBHOOK.APIM;
+    alertWebhook = ENV.ESCALATION_CHAT_WEBHOOK.APIM;
     for (const [key, msg] of noReplyMapAPK.entries()) {
         const timestamp = new Date(msg.timestamp);
         let delay = now.getTime() - timestamp.getTime();
@@ -176,6 +201,39 @@ function sendAlerts(){
         }
     }
 
+    // Iterate over Bijira channel messages
+    escalationWebhook = ENV.ESCALATION_CHAT_WEBHOOK.BIJIRA;
+    alertWebhook = ENV.ESCALATION_CHAT_WEBHOOK.BIJIRA;
+    for (const [key, msg] of noReplyMapBijira.entries()) {
+        const timestamp = new Date(msg.timestamp);
+        let delay = now.getTime() - timestamp.getTime();
+        if ((delay >= l2*60*1000) && msg.level == 2) {
+            if (debug) {
+                console.debug("Sending escalation alert for message: " + msg.id);
+            }
+            msg.delay = delay;
+            sendChatAlert(msg, escalationWebhook);
+            // We no longer need to send alerts for this msg
+            noReplyMapBijira.delete(key);
+        } else if ((delay >= l1*60*1000) && msg.level == 1) {
+            if (debug) {
+                console.debug("Sending Email alert for message: " + msg.id);
+            }
+            msg.delay = delay;
+            sendChatAlert(msg, alertWebhook);
+            msg.level = 2;
+            noReplyMapBijira.set(key,msg);
+        } else if ((delay >= l0*60*1000) && msg.level == 0) {
+            msg.delay = delay;
+            if (debug) {
+                console.debug("Sending chat alert for message: " + msg.id);
+            }
+            sendChatAlert(msg, alertWebhook);
+            msg.level = 1;
+            noReplyMapBijira.set(key,msg);
+        }
+    }  
+
 }
 
 const getChatMessage = (msg) => {
@@ -185,6 +243,8 @@ const getChatMessage = (msg) => {
     // If the message is from APK channel
     if(msg.channelType && msg.channelType==='APK'){
         channelId = ENV.CHANNEL_ID.APK;
+    } else if(msg.channelType && msg.channelType==='BIJIRA') {
+        channelId = ENV.CHANNEL_ID.BIJIRA;
     }
     let date = new Date(msg.timestamp);
     //console.log(date);
